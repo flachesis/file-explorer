@@ -1,8 +1,8 @@
 use chrono::{DateTime, Local};
 use eframe::egui;
 use human_bytes::human_bytes;
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 struct FileExplorer {
     current_path: PathBuf,
@@ -35,24 +35,24 @@ impl FileExplorer {
         match fs::read_dir(&self.current_path) {
             Ok(entries) => {
                 self.error_message = None;
-                
+
                 // Add parent directory (..) unless we're at the root
                 if self.current_path.parent().is_some() {
                     self.entries.push(self.current_path.join(".."));
                 }
-                
+
                 // Add all entries in the current directory
                 for entry in entries {
                     if let Ok(entry) = entry {
                         self.entries.push(entry.path());
                     }
                 }
-                
+
                 // Sort entries: directories first, then files
                 self.entries.sort_by(|a, b| {
                     let a_is_dir = a.is_dir();
                     let b_is_dir = b.is_dir();
-                    
+
                     if a_is_dir && !b_is_dir {
                         std::cmp::Ordering::Less
                     } else if !a_is_dir && b_is_dir {
@@ -79,10 +79,14 @@ impl FileExplorer {
             }
             return;
         }
-        
+
         // Add explicit debug output to help diagnose issues
-        eprintln!("Attempting to navigate to: {:?}, is_dir: {}", path, path.is_dir());
-        
+        eprintln!(
+            "Attempting to navigate to: {:?}, is_dir: {}",
+            path,
+            path.is_dir()
+        );
+
         if path.is_dir() {
             self.current_path = path;
             self.refresh_entries();
@@ -96,14 +100,14 @@ impl FileExplorer {
     fn get_file_info(&self, path: &Path) -> (String, String) {
         let size;
         let modified;
-        
+
         if let Ok(metadata) = fs::metadata(path) {
             if path.is_dir() {
                 size = "<DIR>".to_string();
             } else {
                 size = human_bytes(metadata.len() as f64);
             }
-            
+
             if let Ok(time) = metadata.modified() {
                 let datetime: DateTime<Local> = time.into();
                 modified = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
@@ -114,66 +118,78 @@ impl FileExplorer {
             size = "".to_string();
             modified = "".to_string();
         }
-        
+
         (size, modified)
     }
 }
 
 impl eframe::App for FileExplorer {
+    // Handle cleanup on exit to prevent Wayland warnings
+    fn on_exit(&mut self, gl: Option<&eframe::glow::Context>) {
+        // Force drop of any resources that might be held
+        self.entries.clear();
+        self.error_message = None;
+        self.selected_entry = None;
+        self.path_to_navigate = None;
+        // Explicitly drop any remaining Wayland resources
+        let _ = gl;
+    }
+
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Handle navigation from previous frame (to avoid borrow issues)
         if let Some(path) = self.path_to_navigate.take() {
             self.navigate_to(path);
         }
-        
+
         // Check if we need to repaint after navigation
         if self.needs_repaint {
             self.needs_repaint = false;
             ctx.request_repaint();
         }
-        
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("File Explorer");
-            
+
             // Current path display
             ui.horizontal(|ui| {
                 ui.label("Current path:");
                 ui.label(self.current_path.to_string_lossy().to_string());
             });
-            
+
             // Error message (if any)
             if let Some(error) = &self.error_message {
                 ui.colored_label(egui::Color32::RED, error);
             }
-            
+
             // File/directory list
             egui::ScrollArea::vertical().show(ui, |ui| {
                 // Store paths that need navigation to avoid borrow issues
                 let mut clicked_path = None;
-                
+
                 for (idx, entry) in self.entries.iter().enumerate() {
                     let is_parent_dir = entry.ends_with("..");
                     let is_dir = is_parent_dir || entry.is_dir();
-                    
+
                     let display_name = if is_parent_dir {
                         "..".to_string()
                     } else {
-                        entry.file_name()
+                        entry
+                            .file_name()
                             .unwrap_or_default()
                             .to_string_lossy()
                             .to_string()
                     };
-                    
+
                     let (size, modified) = self.get_file_info(entry);
-                    
+
                     ui.horizontal(|ui| {
                         // For directories, make it more obvious it's clickable
-                        let label_text = if is_dir { 
-                            format!("📁 {}", display_name) 
-                        } else { 
-                            display_name 
+                        let label_text = if is_dir {
+                            format!("📁 {}", display_name)
+                        } else {
+                            display_name
                         };
-                        
+
                         // Use a button for directories and selectable for files
                         if is_dir {
                             if ui.button(&label_text).clicked() {
@@ -183,14 +199,14 @@ impl eframe::App for FileExplorer {
                         } else {
                             ui.selectable_value(&mut self.selected_entry, Some(idx), &label_text);
                         }
-                        
+
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.label(modified);
                             ui.label(size);
                         });
                     });
                 }
-                
+
                 // Handle navigation outside the loop to avoid borrow checker issues
                 if let Some(path) = clicked_path {
                     self.path_to_navigate = Some(path);
