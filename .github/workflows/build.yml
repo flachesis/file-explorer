@@ -10,6 +10,10 @@ on:
     branches:
       - main
 
+# Add permissions block to fix the 403 error
+permissions:
+  contents: write  # Required for creating releases
+
 jobs:
   build:
     runs-on: ubuntu-latest
