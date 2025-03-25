@@ -30,8 +30,9 @@ jobs:
     - name: Package as deb
       run: cargo deb
 
+    # Option 1: If you want to upload as a regular artifact
     - name: Upload deb package
       uses: actions/upload-artifact@v4
       with:
         name: file-explorer-deb
-        path: target/debian/*.deb
+        path: ./target/debian/*.deb
