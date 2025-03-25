@@ -1,0 +1,32 @@
+[package]
+name = "file-explorer"
+version = "0.1.0"
+edition = "2021"
+description = "A simple file explorer application built with Rust and egui"
+authors = ["Flachesis <flachesis@example.com>"]
+license = "MIT"
+homepage = "https://github.com/flachesis/file-explorer"
+repository = "https://github.com/flachesis/file-explorer"
+readme = "README.md"
+
+[dependencies]
+eframe = "0.23.0"     # egui framework
+walkdir = "2.4.0"     # For traversing directories
+chrono = "0.4.31"     # For handling file timestamps
+human_bytes = "0.4.2" # For displaying file sizes in a human-readable format
+
+[package.metadata.deb]
+maintainer = "Flachesis <flachesis@example.com>"
+copyright = "2025, Flachesis <flachesis@example.com>"
+license-file = ["LICENSE", "4"]
+extended-description = """
+A simple, user-friendly file explorer application built with Rust and the egui framework.
+Allows browsing directories, viewing file information, and navigating the file system.
+"""
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+  ["target/release/file-explorer", "usr/bin/", "755"],
+  ["README.md", "usr/share/doc/file-explorer/README", "644"],
+]
