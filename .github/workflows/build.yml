@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'  # Run workflow when a new tag with 'v' prefix is pushed
   pull_request:
     branches:
       - main
@@ -15,6 +17,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for tags
 
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
@@ -30,9 +34,31 @@ jobs:
     - name: Package as deb
       run: cargo deb
 
-    # Option 1: If you want to upload as a regular artifact
-    - name: Upload deb package
+    # Upload as a regular artifact
+    - name: Upload deb package as artifact
       uses: actions/upload-artifact@v4
       with:
         name: file-explorer-deb
         path: ./target/debian/*.deb
+
+    # Get package version from Cargo.toml
+    - name: Get package version
+      id: get_version
+      run: |
+        VERSION=$(grep '^version' Cargo.toml | sed 's/.*= "\(.*\)".*/\1/')
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "Package version: $VERSION"
+
+    # Create a GitHub release only when a tag is pushed
+    - name: Create Release
+      id: create_release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        name: File Explorer v${{ env.VERSION }}
+        draft: false
+        prerelease: false
+        files: ./target/debian/*.deb
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
