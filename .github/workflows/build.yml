@@ -14,7 +14,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
@@ -31,7 +31,7 @@ jobs:
       run: cargo deb
 
     - name: Upload deb package
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-pages-artifact@v3
       with:
         name: file-explorer-deb
         path: target/debian/*.deb
