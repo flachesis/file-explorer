@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-      - master
   pull_request:
     branches:
       - main
-      - master
 
 jobs:
   build:
@@ -33,7 +31,7 @@ jobs:
       run: cargo deb
 
     - name: Upload deb package
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: file-explorer-deb
         path: target/debian/*.deb
