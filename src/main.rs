@@ -3,6 +3,7 @@ use eframe::egui;
 use human_bytes::human_bytes;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 struct FileExplorer {
     current_path: PathBuf,
@@ -26,6 +27,28 @@ impl Default for FileExplorer {
         };
         app.refresh_entries();
         app
+    }
+}
+
+fn open_file_with_default_app(path: &Path) -> Result<(), String> {
+    let command = if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(&["/C", "start", "", path.to_str().unwrap_or_default()])
+            .spawn()
+    } else if cfg!(target_os = "macos") {
+        Command::new("open")
+            .arg(path.to_str().unwrap_or_default())
+            .spawn()
+    } else {
+        // Assume Linux/Unix
+        Command::new("xdg-open")
+            .arg(path.to_str().unwrap_or_default())
+            .spawn()
+    };
+
+    match command {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to open file: {}", e)),
     }
 }
 
@@ -197,7 +220,12 @@ impl eframe::App for FileExplorer {
                                 clicked_path = Some(entry.clone());
                             }
                         } else {
-                            ui.selectable_value(&mut self.selected_entry, Some(idx), &label_text);
+                            let resp = ui.selectable_value(&mut self.selected_entry, Some(idx), &label_text);
+                            if resp.double_clicked() {
+                                if let Err(e) = open_file_with_default_app(&entry.clone()) {
+                                    self.error_message = Some(e.clone());
+                                }
+                            }
                         }
 
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
